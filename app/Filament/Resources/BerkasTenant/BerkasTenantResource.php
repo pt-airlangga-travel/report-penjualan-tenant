@@ -180,9 +180,9 @@ class BerkasTenantResource extends Resource
                                 ->whereNotNull('no_kk')
                                 ->whereNotNull('phone')
                                 ->whereNotNull('address')
+                                ->whereNotNull('nomor_halal')
                                 ->whereNotNull('file_ktp')
                                 ->whereNotNull('file_kk')
-                                ->whereNotNull('file_npwp')
                                 ->whereNotNull('file_sertifikat_higenitas');
                         } elseif ($data['value'] === 'belum_lengkap') {
                             $query->where(function ($q) {
@@ -191,9 +191,9 @@ class BerkasTenantResource extends Resource
                                     ->orWhereNull('no_kk')
                                     ->orWhereNull('phone')
                                     ->orWhereNull('address')
+                                    ->orWhereNull('nomor_halal')
                                     ->orWhereNull('file_ktp')
                                     ->orWhereNull('file_kk')
-                                    ->orWhereNull('file_npwp')
                                     ->orWhereNull('file_sertifikat_higenitas');
                             });
                         }

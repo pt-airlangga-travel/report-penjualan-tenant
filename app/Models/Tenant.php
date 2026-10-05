@@ -43,9 +43,9 @@ class Tenant extends Model
             && !empty($this->no_kk)
             && !empty($this->phone)
             && !empty($this->address)
+            && !empty($this->nomor_halal)
             && !empty($this->file_ktp)
             && !empty($this->file_kk)
-            && !empty($this->file_npwp)
             && !empty($this->file_sertifikat_higenitas);
     }
 

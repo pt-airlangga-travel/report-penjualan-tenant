@@ -86,8 +86,8 @@ class BerkasSaya extends Page implements HasForms
                             ->maxLength(255),
                         TextInput::make('nomor_halal')
                             ->label('Nomor Sertifikat Halal')
-                            ->placeholder('Nomor registrasi halal (jika ada)')
-                            ->nullable()
+                            ->placeholder('Nomor registrasi halal')
+                            ->required()
                             ->maxLength(255),
                         Textarea::make('address')
                             ->label('Alamat Lengkap Pemilik')
@@ -124,8 +124,7 @@ class BerkasSaya extends Page implements HasForms
                             ->visibility('public')
                             ->maxSize(5120)
                             ->imagePreviewHeight('150')
-                            ->helperText('Unggah foto kart NPWP pribadi/badan')
-                            ->required(),
+                            ->helperText('Unggah foto kart NPWP pribadi/badan (Opsional)'),
                         FileUpload::make('file_sertifikat_higenitas')
                             ->label('Foto / Scan Sertifikat Layak Higienitas')
                             ->image()
