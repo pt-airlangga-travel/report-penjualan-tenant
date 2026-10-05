@@ -144,6 +144,7 @@ class SalesDetailResource extends Resource
                     ->sortable()
                     ->weight('bold')
                     ->color('success')
+                    ->visible($canViewAll)
                     ->summarize(
                         Sum::make()
                             ->label('Total Omzet')
