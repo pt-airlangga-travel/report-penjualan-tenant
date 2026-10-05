@@ -149,20 +149,7 @@ class SalesDetailResource extends Resource
                             ->label('Total Omzet')
                             ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float)$state, 0, ',', '.'))
                     ),
-                TextColumn::make('tenant.fee_percentage')
-                    ->label('Fee (%)')
-                    ->formatStateUsing(fn ($state) => number_format((float)$state, 2) . '%')
-                    ->alignEnd()
-                    ->color('warning'),
-                TextColumn::make('fee_amount')
-                    ->label('Potongan Fee')
-                    ->state(function (SalesDetail $record): float {
-                        $fee = $record->tenant?->fee_percentage ?? 0;
-                        return (float)$record->grand_total * (float)$fee / 100;
-                    })
-                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float)$state, 0, ',', '.'))
-                    ->alignEnd()
-                    ->color('danger'),
+
                 TextColumn::make('after_fee')
                     ->label('Setelah Fee')
                     ->state(function (SalesDetail $record): float {
