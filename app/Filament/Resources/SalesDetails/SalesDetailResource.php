@@ -9,14 +9,14 @@ use App\Models\Tenant;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
+use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Forms\Components\DatePicker;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Filter;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
@@ -184,23 +184,35 @@ class SalesDetailResource extends Resource
                     ->options(fn () => Tenant::pluck('name', 'id')->toArray())
                     ->searchable()
                     ->visible($canViewAll),
-                Filter::make('period_date')
-                    ->form([
-                        DatePicker::make('from')->label('Dari Tanggal'),
-                        DatePicker::make('until')->label('Sampai Tanggal'),
-                    ])
-                    ->query(function (Builder $query, array $data) {
-                        return $query
-                            ->when(
-                                $data['from'],
-                                fn (Builder $q, $date) => $q->whereHas('salesImport', fn (Builder $sq) => $sq->whereDate('period_start', '>=', $date))
-                            )
-                            ->when(
-                                $data['until'],
-                                fn (Builder $q, $date) => $q->whereHas('salesImport', fn (Builder $sq) => $sq->whereDate('period_end', '<=', $date))
-                            );
+                DateRangeFilter::make('period_date')
+                    ->label('Periode Tanggal')
+                    ->default(now()->format('d/m/Y') . ' - ' . now()->format('d/m/Y'))
+                    ->query(function (Builder $query, array $state) {
+                        // The date format passed by default from this specific package usually contains '/'
+                        // Fallback logic to still query by today if the state is empty just in case.
+                        $value = $state['value'] ?? now()->format('d/m/Y') . ' - ' . now()->format('d/m/Y');
+                        
+                        $dates = explode(' - ', $value);
+                        if (count($dates) == 2) {
+                            try {
+                                $start = \Carbon\Carbon::createFromFormat('d/m/Y', trim($dates[0]))->startOfDay();
+                                $end = \Carbon\Carbon::createFromFormat('d/m/Y', trim($dates[1]))->endOfDay();
+                            } catch (\Exception $e) {
+                                // Fallback to standard parse if format is different
+                                $start = \Carbon\Carbon::parse(trim($dates[0]))->startOfDay();
+                                $end = \Carbon\Carbon::parse(trim($dates[1]))->endOfDay();
+                            }
+                            
+                            return $query->whereHas('salesImport', function (Builder $sq) use ($start, $end) {
+                                $sq->whereDate('period_start', '>=', $start)
+                                   ->whereDate('period_end', '<=', $end);
+                            });
+                        }
+                        return $query;
                     }),
             ])
+            ->filtersFormColumns(3)
+            ->filtersLayout(FiltersLayout::AboveContent)
             ->recordActions([
                 DeleteAction::make()->visible($canDelete),
             ])
