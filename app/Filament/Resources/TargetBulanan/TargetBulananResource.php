@@ -168,7 +168,8 @@ class TargetBulananResource extends Resource
             ->recordActions([
                 EditAction::make()
                     ->label('Ubah Target')
-                    ->modalHeading('Edit Target Bulanan Tenant'),
+                    ->modalHeading('Edit Target Bulanan Tenant')
+                    ->visible($isAdmin),
             ]);
     }
 
