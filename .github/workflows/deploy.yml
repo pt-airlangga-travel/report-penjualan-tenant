@@ -10,36 +10,15 @@ jobs:
     name: 🎉 Deploy
     runs-on: ubuntu-latest
     steps:
-      - name: 🚚 Get latest code
-        uses: actions/checkout@v7
-
-      - name: 💾 Install PHP dependencies
-        uses: php-actions/composer@v6
-        with:
-          php_version: "8.4"
-          dev: no
-          args: --profile --ignore-platform-reqs
-          command: install
-
-      - name: 🧰 Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-
-      - name: 📦 Install Node.js dependencies
-        run: npm install
-
-      - name: 🛠️ Build project
-        run: npm run build
-
-      - name: 📂 Sync files
-        uses: appleboy/scp-action@v1.0.0
+      - name: 🚀 Execute remote ssh commands
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: ".,!.git**,!node_modules**,!public/index.php,!DOCKER**,!docker**,!Docker**,!output.log,!.agents,!tests,!skills-lock.json,!README.md,!LICENSE,!.prettierrc,!.editorconfig"
-          target: "/home/${{ secrets.SSH_USERNAME }}/domains/development-agt.web.id/public_html/penjualan-tenant"
-          overwrite: true
-          strip_components: 0
+          script: |
+            cd /home/${{ secrets.SSH_USERNAME }}/domains/development-agt.web.id/public_html/penjualan-tenant
+            git pull origin main
+            composer install --no-interaction --prefer-dist --optimize-autoloader
+            php artisan optimize:clear
