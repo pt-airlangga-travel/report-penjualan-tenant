@@ -83,6 +83,7 @@ class SalesDetailResource extends Resource
         $canDelete = auth()->user()?->hasAbility('sales.delete') ?? false;
 
         return $table
+            ->description('Menampilkan laporan penjualan hari ini. Gunakan filter periode untuk melihat tanggal lain.')
             ->groups([
                 Group::make('tenant.name')
                     ->label('Tenant (Kategori)')
@@ -152,7 +153,7 @@ class SalesDetailResource extends Resource
                     ),
 
                 TextColumn::make('after_fee')
-                    ->label('Setelah Fee')
+                    ->label($canViewAll ? 'Setelah Fee' : 'Penjualan Bersih')
                     ->state(function (SalesDetail $record): float {
                         $fee = $record->tenant?->fee_percentage ?? 0;
                         return (float)$record->grand_total * (1 - (float)$fee / 100);
@@ -186,8 +187,8 @@ class SalesDetailResource extends Resource
                     ->visible($canViewAll),
                 Filter::make('period_date')
                     ->form([
-                        DatePicker::make('from')->label('Dari Tanggal'),
-                        DatePicker::make('until')->label('Sampai Tanggal'),
+                        DatePicker::make('from')->label('Dari Tanggal')->default(now()->toDateString()),
+                        DatePicker::make('until')->label('Sampai Tanggal')->default(now()->toDateString()),
                     ])
                     ->query(function (Builder $query, array $data) {
                         return $query
