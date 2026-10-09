@@ -189,9 +189,12 @@ class SalesDetailResource extends Resource
                     ->label('Periode Tanggal')
                     ->default(now()->format('d/m/Y') . ' - ' . now()->format('d/m/Y'))
                     ->query(function (Builder $query, array $state) {
-                        // The date format passed by default from this specific package usually contains '/'
-                        // Fallback logic to still query by today if the state is empty just in case.
-                        $value = $state['value'] ?? now()->format('d/m/Y') . ' - ' . now()->format('d/m/Y');
+                        // Mengambil value dari state dengan key sesuai nama filter
+                        $value = $state['period_date'] ?? $state['value'] ?? $state['isActive'] ?? null;
+                        
+                        if (empty($value)) {
+                            $value = now()->format('d/m/Y') . ' - ' . now()->format('d/m/Y');
+                        }
                         
                         $dates = explode(' - ', $value);
                         if (count($dates) == 2) {
@@ -199,14 +202,16 @@ class SalesDetailResource extends Resource
                                 $start = \Carbon\Carbon::createFromFormat('d/m/Y', trim($dates[0]))->startOfDay();
                                 $end = \Carbon\Carbon::createFromFormat('d/m/Y', trim($dates[1]))->endOfDay();
                             } catch (\Exception $e) {
-                                // Fallback to standard parse if format is different
+                                // Fallback
                                 $start = \Carbon\Carbon::parse(trim($dates[0]))->startOfDay();
                                 $end = \Carbon\Carbon::parse(trim($dates[1]))->endOfDay();
                             }
                             
                             return $query->whereHas('salesImport', function (Builder $sq) use ($start, $end) {
-                                $sq->whereDate('period_start', '>=', $start)
-                                   ->whereDate('period_end', '<=', $end);
+                                // Logic overlap: period_start harus sebelum/sama dengan End, 
+                                // dan period_end harus sesudah/sama dengan Start.
+                                $sq->whereDate('period_start', '<=', $end)
+                                   ->whereDate('period_end', '>=', $start);
                             });
                         }
                         return $query;
