@@ -24,5 +24,8 @@ jobs:
             git clean -fd
             composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs --no-scripts
             php artisan package:discover --ansi
-            php artisan filament:upgrade
+            php artisan vendor:publish --tag=filament-assets --force
+            php artisan vendor:publish --tag=filament-forms-assets --force
+            php artisan vendor:publish --tag=filament-tables-assets --force
+            php artisan filament:assets
             php artisan optimize:clear
