@@ -55,10 +55,6 @@ class TargetBulananResource extends Resource
             return true;
         }
 
-        if ($user->isTenant() && $user->tenant_id === $record->id) {
-            return true;
-        }
-
         return $user->hasAbility('target.update');
     }
 
@@ -97,6 +93,8 @@ class TargetBulananResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $isAdmin = auth()->user()?->isAdmin() ?? false;
+
         return $table
             ->columns([
                 TextColumn::make('name')
@@ -121,7 +119,8 @@ class TargetBulananResource extends Resource
                     })
                     ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float)$state, 0, ',', '.'))
                     ->weight('bold')
-                    ->color('success'),
+                    ->color('success')
+                    ->visible($isAdmin),
                 TextColumn::make('achievement')
                     ->label('Achievement (%)')
                     ->state(function (Tenant $record) {
@@ -136,7 +135,8 @@ class TargetBulananResource extends Resource
                         if ($val >= 100) return 'success';
                         if ($val >= 75) return 'warning';
                         return 'danger';
-                    }),
+                    })
+                    ->visible($isAdmin),
                 TextColumn::make('status')
                     ->label('Status Pencapaian')
                     ->state(function (Tenant $record) {
@@ -157,7 +157,8 @@ class TargetBulananResource extends Resource
                         if (str_contains($state, 'Tercapai')) return 'success';
                         if (str_contains($state, 'Mendekati')) return 'warning';
                         return 'danger';
-                    }),
+                    })
+                    ->visible($isAdmin),
             ])
             ->filters([
                 SelectFilter::make('kantin_id')
