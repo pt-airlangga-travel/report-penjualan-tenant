@@ -19,6 +19,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/${{ secrets.SSH_USERNAME }}/domains/development-agt.web.id/public_html/penjualan-tenant
-            git pull origin main
-            composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
+            composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs --no-scripts
             php artisan optimize:clear
