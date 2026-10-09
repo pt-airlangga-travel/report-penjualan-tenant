@@ -43,7 +43,7 @@ class SettlementResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->check();
+        return auth()->user()?->isAdmin() ?? false;
     }
 
     public static function canCreate(): bool
