@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
@@ -161,7 +162,17 @@ class SalesDetailResource extends Resource
                     ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float)$state, 0, ',', '.'))
                     ->alignEnd()
                     ->weight('bold')
-                    ->color('success'),
+                    ->color('success')
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total Bersih')
+                            ->using(function (\Illuminate\Database\Query\Builder $query) {
+                                return $query->clone()
+                                    ->selectRaw('SUM(sales_details.grand_total * (1 - (COALESCE((SELECT fee_percentage FROM tenants WHERE tenants.id = sales_details.tenant_id LIMIT 1), 0) / 100))) as total_bersih')
+                                    ->value('total_bersih');
+                            })
+                            ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float)$state, 0, ',', '.'))
+                    ),
                 TextColumn::make('created_at')
                     ->label('Waktu Upload')
                     ->dateTime('d M Y H:i')
