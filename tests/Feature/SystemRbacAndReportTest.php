@@ -118,23 +118,22 @@ class SystemRbacAndReportTest extends TestCase
     {
         $this->actingAs($this->tenantUser1);
 
-        $response = $this->get('/dashboard/sales-details');
-        $response->assertSuccessful();
-        $response->assertSee('01 Gado-Gado');
-        $response->assertDontSee('02 Keripik Usus');
+        \Livewire\Livewire::test(\App\Filament\Resources\SalesDetails\Pages\ManageSalesDetails::class)
+            ->set('tableFilters.period_date.value', '')
+            ->assertSuccessful()
+            ->assertSee('01 Gado-Gado')
+            ->assertDontSee('02 Keripik Usus');
     }
 
     public function test_admin_can_view_sales_details_report_with_grouping(): void
     {
         $this->actingAs($this->admin);
 
-        $response = $this->get('/dashboard/sales-details');
-        $response->assertSuccessful();
-        $response->assertSee('01 Gado-Gado');
-        $response->assertSee('02 Keripik Usus');
-
         \Livewire\Livewire::test(\App\Filament\Resources\SalesDetails\Pages\ManageSalesDetails::class)
+            ->set('tableFilters.period_date.value', '')
             ->assertSuccessful()
+            ->assertSee('01 Gado-Gado')
+            ->assertSee('02 Keripik Usus')
             ->assertCanSeeTableRecords(\App\Models\SalesDetail::take(5)->get());
     }
 
