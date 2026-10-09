@@ -23,4 +23,6 @@ jobs:
             git reset --hard origin/main
             git clean -fd
             composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs --no-scripts
+            php artisan package:discover --ansi
+            php artisan filament:upgrade
             php artisan optimize:clear
