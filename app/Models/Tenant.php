@@ -73,4 +73,9 @@ class Tenant extends Model
     {
         return $this->hasMany(Settlement::class);
     }
+
+    public function targets(): HasMany
+    {
+        return $this->hasMany(TenantTarget::class);
+    }
 }

@@ -4,11 +4,14 @@ namespace App\Filament\Resources\TargetBulanan;
 
 use App\Filament\Resources\TargetBulanan\Pages\ManageTargetBulanan;
 use App\Models\SalesDetail;
-use App\Models\SalesImport;
 use App\Models\Tenant;
+use App\Models\TenantTarget;
 use BackedEnum;
 use Carbon\Carbon;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -17,11 +20,12 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rules\Unique;
 use UnitEnum;
 
 class TargetBulananResource extends Resource
 {
-    protected static ?string $model = Tenant::class;
+    protected static ?string $model = TenantTarget::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFlag;
 
@@ -36,40 +40,41 @@ class TargetBulananResource extends Resource
     public static function canViewAny(): bool
     {
         $user = auth()->user();
-        return $user && ($user->isAdmin() || $user->isTenant() || $user->hasAbility('target.view'));
+        return $user && ($user->isAdmin() || $user->hasAbility('target.view_any') || $user->hasAbility('target.view'));
     }
 
     public static function canCreate(): bool
     {
-        return false;
+        return static::isAdminUser();
     }
 
     public static function canEdit(mixed $record): bool
+    {
+        return static::isAdminUser();
+    }
+
+    public static function canDelete(mixed $record): bool
+    {
+        return static::isAdminUser();
+    }
+
+    protected static function isAdminUser(): bool
     {
         $user = auth()->user();
         if (!$user) {
             return false;
         }
 
-        if ($user->isAdmin()) {
-            return true;
-        }
-
-        return $user->hasAbility('target.update');
-    }
-
-    public static function canDelete(mixed $record): bool
-    {
-        return false;
+        return $user->isAdmin() || $user->hasAbility('target.create') || $user->hasAbility('target.update');
     }
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        $query = parent::getEloquentQuery()->with(['tenant.kantin']);
         $user = auth()->user();
 
         if ($user && $user->isTenant() && $user->tenant_id) {
-            $query->where('id', $user->tenant_id);
+            $query->where('tenant_id', $user->tenant_id);
         }
 
         return $query;
@@ -77,58 +82,98 @@ class TargetBulananResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+        $currentYear = (int) now()->year;
+        $years = range($currentYear - 2, $currentYear + 2);
+        $yearOptions = array_combine($years, $years);
+
         return $schema
             ->components([
-                TextInput::make('name')
-                    ->label('Nama Tenant')
-                    ->disabled(),
-                TextInput::make('target_omzet')
-                    ->label('Target Omzet Bulanan')
+                Select::make('tenant_id')
+                    ->label('Tenant')
+                    ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->required(),
+
+                Select::make('month')
+                    ->label('Bulan')
+                    ->options(TenantTarget::MONTH_NAMES)
+                    ->default((int) now()->month)
+                    ->required(),
+
+                Select::make('year')
+                    ->label('Tahun')
+                    ->options($yearOptions)
+                    ->default($currentYear)
+                    ->required()
+                    ->unique(
+                        table: 'tenant_targets',
+                        column: 'year',
+                        modifyRuleUsing: function (Unique $rule, callable $get, ?TenantTarget $record) {
+                            $rule->where('tenant_id', $get('tenant_id'))
+                                 ->where('month', $get('month'));
+
+                            return $record ? $rule->ignore($record->id) : $rule;
+                        }
+                    ),
+
+                TextInput::make('target_amount')
+                    ->label('Jumlah Target')
                     ->prefix('Rp')
                     ->numeric()
                     ->required()
-                    ->helperText('Target omzet penjualan bulanan untuk tenant ini'),
+                    ->helperText('Nominal target omzet penjualan untuk bulan ini'),
             ]);
     }
 
     public static function table(Table $table): Table
     {
-        $isAdmin = auth()->user()?->isAdmin() ?? false;
+        $canAdmin = static::isAdminUser();
+        $currentYear = (int) now()->year;
+        $years = range($currentYear - 2, $currentYear + 2);
 
         return $table
+            ->defaultSort('year', 'desc')
             ->columns([
-                TextColumn::make('name')
+                TextColumn::make('tenant.name')
                     ->label('Nama Tenant')
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-                TextColumn::make('kantin.name')
+
+                TextColumn::make('tenant.kantin.name')
                     ->label('Kantin')
                     ->searchable()
                     ->sortable()
                     ->badge()
                     ->color('info'),
-                TextColumn::make('target_omzet')
-                    ->label('Target Bulanan')
-                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float)$state, 0, ',', '.'))
+
+                TextColumn::make('period_label')
+                    ->label('Bulan & Tahun')
+                    ->state(fn (TenantTarget $record) => $record->period_label)
+                    ->weight('semibold'),
+
+                TextColumn::make('target_amount')
+                    ->label('Target')
+                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float) $state, 0, ',', '.'))
                     ->sortable(),
-                TextColumn::make('month_revenue')
-                    ->label('Omzet Bulan Ini')
-                    ->state(function (Tenant $record) {
-                        return static::calculateMonthRevenue($record->id);
-                    })
-                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float)$state, 0, ',', '.'))
+
+                TextColumn::make('actual_sales')
+                    ->label('Penjualan Riil')
+                    ->state(fn (TenantTarget $record) => static::calculateActualSales($record))
+                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format((float) $state, 0, ',', '.'))
                     ->weight('bold')
                     ->color('success')
-                    ->visible($isAdmin),
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('achievement')
                     ->label('Achievement (%)')
-                    ->state(function (Tenant $record) {
-                        $revenue = static::calculateMonthRevenue($record->id);
-                        $target = (float) ($record->target_omzet ?? 55000000);
-                        return $target > 0 ? ($revenue / $target) * 100 : 0;
+                    ->state(function (TenantTarget $record) {
+                        $actual = static::calculateActualSales($record);
+                        $target = (float) $record->target_amount;
+                        return $target > 0 ? ($actual / $target) * 100 : 0;
                     })
-                    ->formatStateUsing(fn ($state) => number_format((float)$state, 1, ',', '.') . '%')
+                    ->formatStateUsing(fn ($state) => number_format((float) $state, 1, ',', '.') . '%')
                     ->badge()
                     ->color(function ($state) {
                         $val = (float) $state;
@@ -136,40 +181,45 @@ class TargetBulananResource extends Resource
                         if ($val >= 75) return 'warning';
                         return 'danger';
                     })
-                    ->visible($isAdmin),
-                TextColumn::make('status')
-                    ->label('Status Pencapaian')
-                    ->state(function (Tenant $record) {
-                        $revenue = static::calculateMonthRevenue($record->id);
-                        $target = (float) ($record->target_omzet ?? 55000000);
-                        $achievement = $target > 0 ? ($revenue / $target) * 100 : 0;
+                    ->toggleable(isToggledHiddenByDefault: true),
 
-                        if ($achievement >= 100) {
-                            return 'Target Tercapai 🎉';
-                        }
-                        if ($achievement >= 75) {
-                            return 'Mendekati Target 📈';
-                        }
-                        return 'Perlu Ditingkatkan ⚠️';
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->state(function (TenantTarget $record) {
+                        $actual = static::calculateActualSales($record);
+                        $target = (float) $record->target_amount;
+                        return $actual >= $target ? 'Melebihi Target' : 'Belum Tercapai';
                     })
                     ->badge()
-                    ->color(function ($state) {
-                        if (str_contains($state, 'Tercapai')) return 'success';
-                        if (str_contains($state, 'Mendekati')) return 'warning';
-                        return 'danger';
-                    })
-                    ->visible($isAdmin),
+                    ->color(fn ($state) => $state === 'Melebihi Target' ? 'success' : 'danger'),
             ])
             ->filters([
-                SelectFilter::make('kantin_id')
-                    ->label('Filter Kantin')
-                    ->relationship('kantin', 'name'),
+                SelectFilter::make('tenant_id')
+                    ->label('Filter Tenant')
+                    ->relationship('tenant', 'name')
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('month')
+                    ->label('Filter Bulan')
+                    ->options(TenantTarget::MONTH_NAMES),
+
+                SelectFilter::make('year')
+                    ->label('Filter Tahun')
+                    ->options(array_combine($years, $years)),
+            ])
+            ->headerActions([
+                CreateAction::make()
+                    ->label('Tambah Target')
+                    ->visible($canAdmin),
             ])
             ->recordActions([
                 EditAction::make()
-                    ->label('Ubah Target')
-                    ->modalHeading('Edit Target Bulanan Tenant')
-                    ->visible($isAdmin),
+                    ->label('Ubah')
+                    ->visible($canAdmin),
+                DeleteAction::make()
+                    ->label('Hapus')
+                    ->visible($canAdmin),
             ]);
     }
 
@@ -180,37 +230,16 @@ class TargetBulananResource extends Resource
         ];
     }
 
-    public static function calculateMonthRevenue(int $tenantId): float
+    public static function calculateActualSales(TenantTarget $target): float
     {
-        $startOfMonth = now()->startOfMonth()->format('Y-m-d');
-        $endOfMonth = now()->endOfMonth()->format('Y-m-d');
+        $start = Carbon::create($target->year, $target->month, 1)->startOfDay();
+        $end = $start->copy()->endOfMonth()->endOfDay();
 
-        $monthRevenue = (float) SalesDetail::where('tenant_id', $tenantId)
-            ->whereHas('salesImport', function ($q) use ($startOfMonth, $endOfMonth) {
-                $q->whereDate('period_end', '>=', $startOfMonth)
-                  ->whereDate('period_start', '<=', $endOfMonth);
+        return (float) SalesDetail::where('tenant_id', $target->tenant_id)
+            ->whereHas('salesImport', function (Builder $q) use ($start, $end) {
+                $q->whereDate('period_end', '>=', $start->toDateString())
+                  ->whereDate('period_start', '<=', $end->toDateString());
             })
             ->sum('grand_total');
-
-        if ($monthRevenue == 0) {
-            $latestImportDate = SalesImport::whereHas('salesDetails', fn ($q) => $q->where('tenant_id', $tenantId))
-                ->max('period_end');
-
-            if ($latestImportDate) {
-                $refDate = Carbon::parse($latestImportDate);
-                $s = $refDate->copy()->startOfMonth()->format('Y-m-d');
-                $e = $refDate->copy()->endOfMonth()->format('Y-m-d');
-
-                $monthRevenue = (float) SalesDetail::where('tenant_id', $tenantId)
-                    ->whereHas('salesImport', fn ($q) => $q->whereDate('period_end', '>=', $s)->whereDate('period_start', '<=', $e))
-                    ->sum('grand_total');
-            }
-        }
-
-        if ($monthRevenue == 0) {
-            $monthRevenue = (float) SalesDetail::where('tenant_id', $tenantId)->sum('grand_total');
-        }
-
-        return $monthRevenue;
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Kantin;
 use App\Models\SalesDetail;
 use App\Models\SalesImport;
 use App\Models\Tenant;
+use App\Models\TenantTarget;
 use App\Models\User;
 use App\Filament\Resources\TargetBulanan\TargetBulananResource;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,6 +30,20 @@ class TargetBulananTest extends TestCase
             'target_omzet' => 60000000,
         ]);
 
+        $target1 = TenantTarget::create([
+            'tenant_id' => $tenant1->id,
+            'year' => 2026,
+            'month' => 10,
+            'target_amount' => 50000000,
+        ]);
+
+        $target2 = TenantTarget::create([
+            'tenant_id' => $tenant2->id,
+            'year' => 2026,
+            'month' => 10,
+            'target_amount' => 60000000,
+        ]);
+
         $user = User::factory()->create([
             'role' => 'tenant',
             'tenant_id' => $tenant1->id,
@@ -40,7 +55,7 @@ class TargetBulananTest extends TestCase
         $records = $query->get();
 
         $this->assertCount(1, $records);
-        $this->assertEquals($tenant1->id, $records->first()->id);
+        $this->assertEquals($target1->id, $records->first()->id);
     }
 
     public function test_calculates_month_revenue_and_achievement_correctly(): void
@@ -49,13 +64,20 @@ class TargetBulananTest extends TestCase
         $tenant = Tenant::create([
             'kantin_id' => $kantin->id,
             'name' => 'Bakso Pak Kumis',
-            'target_omzet' => 10000000, // 10 Million Target
+            'target_omzet' => 10000000,
+        ]);
+
+        $target = TenantTarget::create([
+            'tenant_id' => $tenant->id,
+            'year' => (int) now()->year,
+            'month' => (int) now()->month,
+            'target_amount' => 10000000,
         ]);
 
         $import = SalesImport::create([
             'kantin_id' => $kantin->id,
             'file_name' => 'test.csv',
-            'period_raw' => '01/09/2026 - 30/09/2026',
+            'period_raw' => '01/10/2026 - 31/10/2026',
             'period_start' => now()->startOfMonth(),
             'period_end' => now()->endOfMonth(),
             'total_rows' => 1,
@@ -72,10 +94,10 @@ class TargetBulananTest extends TestCase
             'grand_total' => 8500000,
         ]);
 
-        $revenue = TargetBulananResource::calculateMonthRevenue($tenant->id);
-        $this->assertEquals(8500000, $revenue);
+        $actual = TargetBulananResource::calculateActualSales($target);
+        $this->assertEquals(8500000, $actual);
 
-        $achievement = ($revenue / $tenant->target_omzet) * 100;
+        $achievement = ($actual / $target->target_amount) * 100;
         $this->assertEquals(85.0, $achievement);
     }
 }

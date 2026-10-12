@@ -51,6 +51,12 @@ class DatabaseSeeder extends Seeder
             ['name' => 'sales.view_all', 'display_name' => 'Lihat Laporan Penjualan Global (Semua Tenant)', 'group' => 'Laporan Penjualan'],
             ['name' => 'sales.view_own', 'display_name' => 'Lihat Laporan Penjualan Tenant Milik Sendiri', 'group' => 'Laporan Penjualan'],
             ['name' => 'sales.delete', 'display_name' => 'Hapus Transaksi Penjualan', 'group' => 'Laporan Penjualan'],
+
+            // Target Bulanan
+            ['name' => 'target.view_any', 'display_name' => 'Lihat Target Bulanan', 'group' => 'Target Bulanan'],
+            ['name' => 'target.create', 'display_name' => 'Tambah Target Bulanan', 'group' => 'Target Bulanan'],
+            ['name' => 'target.update', 'display_name' => 'Ubah Target Bulanan', 'group' => 'Target Bulanan'],
+            ['name' => 'target.delete', 'display_name' => 'Hapus Target Bulanan', 'group' => 'Target Bulanan'],
         ];
 
         foreach ($permissionsList as $perm) {
@@ -92,7 +98,7 @@ class DatabaseSeeder extends Seeder
         $adminPermissions = Permission::where('name', 'not like', 'role.%')->pluck('id')->toArray();
         $adminRole->permissions()->sync($adminPermissions);
 
-        $tenantPermissions = Permission::whereIn('name', ['sales.view_own'])->pluck('id')->toArray();
+        $tenantPermissions = Permission::whereIn('name', ['sales.view_own', 'target.view_any'])->pluck('id')->toArray();
         $tenantRole->permissions()->sync($tenantPermissions);
 
         // 4. Sample Kantin

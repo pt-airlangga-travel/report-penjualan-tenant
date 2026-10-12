@@ -199,24 +199,28 @@ class DailySalesReportResource extends Resource
                     ->label('Periode Tanggal')
                     ->default(now()->startOfMonth()->format('d/m/Y') . ' - ' . now()->endOfMonth()->format('d/m/Y'))
                     ->query(function (Builder $query, array $data): Builder {
+                        // Default: bulan ini (dipakai kalau filter kosong / tidak valid)
+                        $start = now()->startOfMonth();
+                        $end = now()->endOfMonth();
+
                         $range = $data['period_date'] ?? null;
 
-                        if (! $range) {
-                            return $query;
-                        }
+                        if ($range && is_string($range)) {
+                            $dates = explode(' - ', $range);
 
-                        $dates = explode(' - ', $range);
-
-                        if (count($dates) !== 2) {
-                            return $query;
-                        }
-
-                        try {
-                            $start = Carbon::createFromFormat('d/m/Y', trim($dates[0]))->startOfDay();
-                            $end = Carbon::createFromFormat('d/m/Y', trim($dates[1]))->endOfDay();
-                        } catch (\Throwable $e) {
-                            $start = Carbon::parse(trim($dates[0]))->startOfDay();
-                            $end = Carbon::parse(trim($dates[1]))->endOfDay();
+                            if (count($dates) === 2) {
+                                try {
+                                    $start = Carbon::createFromFormat('d/m/Y', trim($dates[0]))->startOfDay();
+                                    $end = Carbon::createFromFormat('d/m/Y', trim($dates[1]))->endOfDay();
+                                } catch (\Throwable $e) {
+                                    try {
+                                        $start = Carbon::parse(trim($dates[0]))->startOfDay();
+                                        $end = Carbon::parse(trim($dates[1]))->endOfDay();
+                                    } catch (\Throwable $e) {
+                                        // tetap pakai bulan ini
+                                    }
+                                }
+                            }
                         }
 
                         return $query->whereBetween('report_date', [

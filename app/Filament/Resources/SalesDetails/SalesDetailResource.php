@@ -206,7 +206,7 @@ class SalesDetailResource extends Resource
                         $value = $state['period_date'] ?? $state['value'] ?? $state['isActive'] ?? null;
                         
                         if (empty($value)) {
-                            $value = now()->format('d/m/Y') . ' - ' . now()->format('d/m/Y');
+                            return $query;
                         }
                         
                         $dates = explode(' - ', $value);

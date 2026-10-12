@@ -11,6 +11,10 @@ class ManageTargetBulanan extends ManageRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            \Filament\Actions\CreateAction::make()
+                ->label('Tambah Target Bulanan')
+                ->visible(fn () => auth()->user()?->isAdmin() || auth()->user()?->hasAbility('target.create')),
+        ];
     }
 }
