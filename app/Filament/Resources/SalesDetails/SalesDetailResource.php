@@ -94,6 +94,7 @@ class SalesDetailResource extends Resource
                     ->collapsible(),
             ])
             ->defaultGroup($canViewAll ? 'tenant.name' : null)
+            ->defaultSort('salesImport.period_start', 'asc')
             ->columns([
                 TextColumn::make('salesImport.kantin.name')
                     ->label('Kantin')
@@ -108,9 +109,10 @@ class SalesDetailResource extends Resource
                     ->sortable()
                     ->weight('bold')
                     ->visible($canViewAll),
-                TextColumn::make('salesImport.period_raw')
+                TextColumn::make('salesImport.period_start')
                     ->label('Periode')
                     ->searchable()
+                    ->date('d M Y')
                     ->sortable(),
                 TextColumn::make('item_name')
                     ->label('Menu / Item')
