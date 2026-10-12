@@ -31,6 +31,8 @@ class TargetBulananResource extends Resource
 
     protected static UnitEnum|string|null $navigationGroup = 'Laporan & Target';
 
+    protected static ?string $slug = 'target-bulanan';
+
     protected static ?string $modelLabel = 'Target Bulanan';
 
     protected static ?string $pluralModelLabel = 'Target Bulanan Tenant';
@@ -207,11 +209,6 @@ class TargetBulananResource extends Resource
                 SelectFilter::make('year')
                     ->label('Filter Tahun')
                     ->options(array_combine($years, $years)),
-            ])
-            ->headerActions([
-                CreateAction::make()
-                    ->label('Tambah Target')
-                    ->visible($canAdmin),
             ])
             ->recordActions([
                 EditAction::make()
