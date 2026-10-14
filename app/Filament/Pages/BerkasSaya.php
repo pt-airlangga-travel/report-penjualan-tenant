@@ -24,7 +24,7 @@ class BerkasSaya extends Page implements HasForms
 
     protected static UnitEnum|string|null $navigationGroup = 'Data Tenant';
 
-    protected static ?string $navigationLabel = 'Upload Berkas Saya';
+    protected static ?string $navigationLabel = 'Upload Berkas';
 
     protected static ?string $title = 'Berkas & Identitas Tenant';
 
@@ -36,8 +36,15 @@ class BerkasSaya extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
-        return $user && ($user->isTenant() || $user->hasAbility('berkas.update'));
+        // Hanya akun tenant yang boleh membuka halaman upload ini.
+        // Superadmin/admin TIDAK mengunggah berkas — mereka memantau
+        // lewat Resource "Berkas & Dokumen Tenant".
+        return auth()->user()?->isTenant() ?? false;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->isTenant() ?? false;
     }
 
     public function mount(): void
